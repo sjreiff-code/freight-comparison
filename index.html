@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freight Origin Tracker — Landstar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap');
+
+:root {
+–bg: #0d1117;
+–surface: #161b22;
+–card: #1c2330;
+–border: #30363d;
+–muir: #f0a500;
+–muir-dim: rgba(240,165,0,0.12);
+–jerome: #3b82f6;
+–jerome-dim: rgba(59,130,246,0.12);
+–green: #22c55e;
+–red: #ef4444;
+–text: #e6edf3;
+–muted: #8b949e;
+–radius: 10px;
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(–bg); color: var(–text); font-family: ‘Barlow’, sans-serif; min-height: 100vh; }
+
+header {
+background: var(–surface);
+border-bottom: 1px solid var(–border);
+padding: 16px 20px;
+display: flex; align-items: center; gap: 12px;
+}
+header h1 {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-weight: 900; font-size: 1.4rem;
+letter-spacing: 0.05em; text-transform: uppercase;
+}
+.header-date { font-size: 0.78rem; color: var(–muted); margin-left: auto; }
+
+main { padding: 16px; max-width: 880px; margin: 0 auto; }
+
+/* SCOREBOARD */
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; margin-bottom: 14px; align-items: center; }
+.score-card { background: var(–card); border: 2px solid var(–border); border-radius: var(–radius); padding: 14px; text-align: center; }
+.score-card.muir { border-color: var(–muir); background: var(–muir-dim); }
+.score-card.jerome { border-color: var(–jerome); background: var(–jerome-dim); }
+.score-label { font-family: ‘Barlow Condensed’, sans-serif; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(–muted); margin-bottom: 2px; }
+.score-origin { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1.15rem; margin-bottom: 8px; }
+.score-card.muir .score-origin { color: var(–muir); }
+.score-card.jerome .score-origin { color: var(–jerome); }
+.score-total { font-family: ‘Barlow Condensed’, sans-serif; font-size: 2rem; font-weight: 900; }
+.score-sub { font-size: 0.74rem; color: var(–muted); margin-top: 4px; line-height: 1.6; }
+.vs-badge { text-align: center; }
+.vs-badge span {
+font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1rem; color: var(–muted);
+background: var(–surface); border: 1px solid var(–border); border-radius: 50%;
+width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;
+}
+.winner-bar { background: var(–card); border: 1px solid var(–border); border-radius: 6px; height: 8px; overflow: hidden; margin: 6px 0 3px; }
+.winner-fill { height: 100%; transition: width 0.5s ease; border-radius: 6px; background: var(–muir); width: 50%; }
+.winner-label { font-size: 0.75rem; color: var(–muted); text-align: center; margin-bottom: 16px; }
+
+/* TABS */
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab {
+flex: 1; padding: 9px; border-radius: var(–radius); border: 2px solid var(–border);
+background: var(–card); color: var(–muted); font-family: ‘Barlow Condensed’, sans-serif;
+font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s;
+}
+.tab.muir.active { border-color: var(–muir); color: var(–muir); background: var(–muir-dim); }
+.tab.jerome.active { border-color: var(–jerome); color: var(–jerome); background: var(–jerome-dim); }
+.tab:hover:not(.active) { border-color: #555; color: var(–text); }
+
+/* FORM */
+.log-form { background: var(–card); border: 1px solid var(–border); border-radius: var(–radius); padding: 16px; margin-bottom: 18px; }
+.log-form h3 { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 700; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; color: var(–muted); }
+
+.upload-zone {
+border: 2px dashed var(–border); border-radius: 8px; padding: 20px; text-align: center;
+cursor: pointer; transition: all 0.2s; margin-bottom: 12px; position: relative; overflow: hidden;
+}
+.upload-zone:hover { border-color: #555; }
+.upload-zone.has-image { border-style: solid; padding: 8px; }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-zone img { max-width: 100%; max-height: 180px; border-radius: 6px; display: block; margin: 0 auto; }
+.upload-placeholder { color: var(–muted); font-size: 0.85rem; }
+.upload-placeholder .icon { font-size: 1.8rem; margin-bottom: 5px; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(–muted); }
+
+input[type=“text”], input[type=“number”], input[type=“date”], textarea {
+background: var(–bg); border: 1px solid var(–border); border-radius: 6px;
+color: var(–text); padding: 8px 10px; font-family: ‘Barlow’, sans-serif; font-size: 0.88rem; width: 100%;
+}
+input:focus, textarea:focus { outline: none; border-color: #555; }
+textarea { resize: vertical; min-height: 54px; }
+
+/* ROUTE BOX */
+.route-box { background: var(–bg); border: 1px solid var(–border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+.route-box-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(–muted); margin-bottom: 10px; }
+.route-stops { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.route-stop { display: flex; align-items: center; gap: 8px; }
+.stop-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.stop-dot.home-muir { background: var(–muir); }
+.stop-dot.home-jerome { background: var(–jerome); }
+.stop-dot.origin-dot { background: #a78bfa; }
+.stop-dot.dest-dot { background: var(–green); }
+.stop-label { font-size: 0.78rem; color: var(–muted); width: 76px; flex-shrink: 0; }
+.stop-fixed { font-size: 0.88rem; font-weight: 600; }
+.stop-input { flex: 1; }
+.stop-input input { margin: 0; }
+
+.calc-btn {
+width: 100%; padding: 9px; background: #21262d; border: 1px solid var(–border); border-radius: 6px;
+color: var(–muted); font-family: ‘Barlow Condensed’, sans-serif; font-weight: 700; font-size: 0.9rem;
+text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s;
+}
+.calc-btn:hover:not(:disabled) { border-color: #555; color: var(–text); }
+.calc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.calc-status { font-size: 0.78rem; color: var(–muted); margin-top: 8px; min-height: 16px; font-style: italic; text-align: center; }
+
+.mileage-result { display: none; background: #0a0d12; border: 1px solid var(–border); border-radius: 8px; padding: 12px; margin-top: 10px; gap: 8px; }
+.mileage-result.visible { display: grid; grid-template-columns: repeat(4, 1fr); }
+.mile-box { text-align: center; }
+.mile-val { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1.25rem; }
+.mile-lbl { font-size: 0.66rem; color: var(–muted); margin-top: 2px; line-height: 1.4; }
+.mile-box.total .mile-val { color: var(–muir); }
+.mile-box.total.jerome-tab .mile-val { color: var(–jerome); }
+
+.ai-extract-btn {
+width: 100%; padding: 9px; background: #21262d; border: 1px solid var(–border); border-radius: 6px;
+color: var(–muted); font-family: ‘Barlow Condensed’, sans-serif; font-weight: 700; font-size: 0.88rem;
+text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; margin-bottom: 10px; transition: all 0.2s;
+}
+.ai-extract-btn:hover:not(:disabled) { border-color: #555; color: var(–text); }
+.ai-extract-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ai-status { font-size: 0.78rem; color: var(–muted); margin-bottom: 8px; min-height: 16px; font-style: italic; }
+
+.live-ppm { font-size: 0.82rem; text-align: center; margin-bottom: 10px; min-height: 18px; font-weight: 600; }
+
+.submit-btn {
+width: 100%; padding: 12px; border-radius: 8px; border: none;
+font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1.05rem;
+text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; transition: opacity 0.2s;
+}
+.submit-btn:hover { opacity: 0.88; }
+.submit-btn.muir { background: var(–muir); color: #000; }
+.submit-btn.jerome { background: var(–jerome); color: #fff; }
+
+/* STATS */
+.section-title { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(–muted); margin-bottom: 8px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat-box { background: var(–card); border: 1px solid var(–border); border-radius: 8px; padding: 11px; text-align: center; }
+.stat-val { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1.3rem; }
+.stat-lbl { font-size: 0.68rem; color: var(–muted); margin-top: 2px; }
+
+/* LOAD LIST */
+.load-list { display: flex; flex-direction: column; gap: 10px; }
+.load-item {
+background: var(–card); border: 1px solid var(–border); border-radius: var(–radius);
+padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start;
+}
+.load-item.muir { border-left: 3px solid var(–muir); }
+.load-item.jerome { border-left: 3px solid var(–jerome); }
+.load-date { font-size: 0.72rem; color: var(–muted); margin-bottom: 2px; }
+.load-desc { font-weight: 600; font-size: 0.9rem; margin-bottom: 3px; }
+.load-route { font-size: 0.75rem; color: var(–muted); margin-bottom: 2px; }
+.load-profit { font-family: ‘Barlow Condensed’, sans-serif; font-weight: 900; font-size: 1.35rem; color: var(–green); text-align: right; }
+.load-ppm { font-size: 0.72rem; color: var(–muted); text-align: right; margin-top: 2px; }
+.load-del { background: none; border: none; color: var(–red); cursor: pointer; font-size: 0.75rem; margin-top: 5px; display: block; text-align: right; opacity: 0.6; }
+.load-del:hover { opacity: 1; }
+
+.empty-state { text-align: center; padding: 36px 20px; color: var(–muted); font-size: 0.88rem; background: var(–card); border: 1px dashed var(–border); border-radius: var(–radius); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.modal-overlay.hidden { display: none; }
+.modal-overlay img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
+
+@media (max-width: 600px) {
+.scoreboard { grid-template-columns: 1fr; }
+.vs-badge { display: none; }
+.field-row { grid-template-columns: 1fr; }
+.stats-row { grid-template-columns: 1fr 1fr; }
+.mileage-result.visible { grid-template-columns: 1fr 1fr; }
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <span style="font-size:26px;">🚛</span>
+  <h1>Freight Origin Tracker</h1>
+  <span class="header-date" id="date-range"></span>
+</header>
+
+<main>
+
+  <!-- SCOREBOARD -->
+
+  <div class="scoreboard">
+    <div class="score-card muir">
+      <div class="score-label">Home Base A</div>
+      <div class="score-origin">Muir, MI</div>
+      <div class="score-total" id="muir-total">$0</div>
+      <div class="score-sub">
+        <span id="muir-loads">0</span> loads · avg <span id="muir-avg">$0</span><br>
+        <span id="muir-ppm">—</span>
+      </div>
+    </div>
+    <div class="vs-badge"><span>VS</span></div>
+    <div class="score-card jerome">
+      <div class="score-label">Home Base B</div>
+      <div class="score-origin">Jeromesville, OH</div>
+      <div class="score-total" id="jerome-total">$0</div>
+      <div class="score-sub">
+        <span id="jerome-loads">0</span> loads · avg <span id="jerome-avg">$0</span><br>
+        <span id="jerome-ppm">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="winner-bar"><div class="winner-fill" id="winner-fill"></div></div>
+  <div class="winner-label" id="winner-label">Log loads to see the leader</div>
+
+  <!-- TABS -->
+
+  <div class="tabs">
+    <button class="tab muir active" onclick="switchTab('muir')">📍 Muir, MI</button>
+    <button class="tab jerome" onclick="switchTab('jerome')">📍 Jeromesville, OH</button>
+  </div>
+
+  <!-- LOG FORM -->
+
+  <div class="log-form">
+    <h3 id="form-title">Log a Load — Muir, MI</h3>
+
+```
+<div class="upload-zone" id="upload-zone">
+  <input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)">
+  <div class="upload-placeholder" id="upload-placeholder">
+    <div class="icon">📷</div>
+    <div>Tap to upload a load board photo</div>
+    <div style="font-size:0.72rem;margin-top:4px;">AI reads origin, destination &amp; details automatically</div>
+  </div>
+  <img id="preview-img" style="display:none;" alt="Load photo" onclick="openModal(event)">
+</div>
+
+<button class="ai-extract-btn" id="extract-btn" onclick="extractFromPhoto()" disabled>
+  ✨ Extract Load Details from Photo
+</button>
+<div class="ai-status" id="ai-status"></div>
+
+<!-- ROUTE -->
+<div class="route-box">
+  <div class="route-box-title">🗺 Round-Trip Route</div>
+  <div class="route-stops">
+    <div class="route-stop">
+      <div class="stop-dot home-muir" id="home-dot-1"></div>
+      <div class="stop-label">Home</div>
+      <div class="stop-fixed" id="home-label-1">Muir, MI</div>
+    </div>
+    <div class="route-stop">
+      <div class="stop-dot origin-dot"></div>
+      <div class="stop-label">Load Origin</div>
+      <div class="stop-input"><input type="text" id="load-origin" placeholder="e.g. Detroit, MI" oninput="clearMiles()"></div>
+    </div>
+    <div class="route-stop">
+      <div class="stop-dot dest-dot"></div>
+      <div class="stop-label">Destination</div>
+      <div class="stop-input"><input type="text" id="load-dest" placeholder="e.g. Cleveland, OH" oninput="clearMiles()"></div>
+    </div>
+    <div class="route-stop">
+      <div class="stop-dot home-muir" id="home-dot-2"></div>
+      <div class="stop-label">Return Home</div>
+      <div class="stop-fixed" id="home-label-2">Muir, MI</div>
+    </div>
+  </div>
+  <button class="calc-btn" id="calc-btn" onclick="calculateMiles()">🗺 Calculate Round-Trip Miles</button>
+  <div class="calc-status" id="calc-status"></div>
+
+  <div class="mileage-result" id="mileage-result">
+    <div class="mile-box">
+      <div class="mile-val" id="mi-deadhead">—</div>
+      <div class="mile-lbl">Deadhead mi<br><span style="opacity:.6;font-size:0.6rem;">Home → Origin</span></div>
+    </div>
+    <div class="mile-box">
+      <div class="mile-val" id="mi-loaded">—</div>
+      <div class="mile-lbl">Loaded mi<br><span style="opacity:.6;font-size:0.6rem;">Origin → Dest</span></div>
+    </div>
+    <div class="mile-box">
+      <div class="mile-val" id="mi-return">—</div>
+      <div class="mile-lbl">Return mi<br><span style="opacity:.6;font-size:0.6rem;">Dest → Home</span></div>
+    </div>
+    <div class="mile-box total" id="mi-total-box">
+      <div class="mile-val" id="mi-total">—</div>
+      <div class="mile-lbl">Total mi<br><span style="opacity:.6;font-size:0.6rem;">Full trip</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="field-row">
+  <div class="field">
+    <label>Load Date</label>
+    <input type="date" id="load-date">
+  </div>
+  <div class="field">
+    <label>My Profit ($)</label>
+    <input type="number" id="load-profit" placeholder="e.g. 420" oninput="updateLivePPM()">
+  </div>
+</div>
+
+<div class="field" style="margin-bottom:10px;">
+  <label>Load Description</label>
+  <input type="text" id="load-desc" placeholder="e.g. Flatbed, 42ft, steel coils">
+</div>
+
+<div class="field" style="margin-bottom:12px;">
+  <label>Notes</label>
+  <textarea id="load-notes" placeholder="Weight, special requirements, lumper fees, etc."></textarea>
+</div>
+
+<div class="live-ppm" id="live-ppm"></div>
+<button class="submit-btn muir" id="submit-btn" onclick="addLoad()">+ Log This Load</button>
+```
+
+  </div>
+
+  <!-- STATS -->
+
+  <div class="section-title" id="stats-label">Muir, MI — 14-Day Stats</div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stat-total">$0</div><div class="stat-lbl">Total Profit</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-loads">0</div><div class="stat-lbl">Loads</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-avg">$0</div><div class="stat-lbl">Avg Profit</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-ppm">—</div><div class="stat-lbl">Avg $/Mile</div></div>
+  </div>
+
+  <div class="section-title">Load Log</div>
+  <div class="load-list" id="load-list"></div>
+
+</main>
+
+<div class="modal-overlay hidden" id="modal" onclick="closeModal()">
+  <img id="modal-img" src="" alt="">
+</div>
+
+<script>
+  // ── Home coordinates ─────────────────────────────────────
+  const HOMES = {
+    muir:   { lat: 42.8453, lon: -84.9397, label: 'Muir, MI' },
+    jerome: { lat: 40.7873, lon: -82.2124, label: 'Jeromesville, OH' }
+  };
+
+  let activeTab = 'muir';
+  let photoBase64 = null;
+  let currentMiles = null;
+  let data = { muir: [], jerome: [] };
+
+  try { const s = localStorage.getItem('freightTracker3'); if (s) data = JSON.parse(s); } catch(e){}
+
+  // ── Init ─────────────────────────────────────────────────
+  function init() {
+    document.getElementById('load-date').valueAsDate = new Date();
+    const today = new Date(), ago = new Date(today);
+    ago.setDate(today.getDate() - 13);
+    document.getElementById('date-range').textContent =
+      ago.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' +
+      today.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    renderList(); updateStats(); updateScoreboard();
+  }
+
+  function save() { try { localStorage.setItem('freightTracker3', JSON.stringify(data)); } catch(e){} }
+  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+  function fmtPPM(profit, miles) { return miles > 0 ? '$' + (profit/miles).toFixed(2) + '/mi' : '—'; }
+
+  // ── Tab switch ───────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    photoBase64 = null; currentMiles = null;
+    ['load-profit','load-desc','load-notes','load-origin','load-dest'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('preview-img').style.display = 'none';
+    document.getElementById('upload-placeholder').style.display = 'block';
+    document.getElementById('upload-zone').classList.remove('has-image');
+    document.getElementById('extract-btn').disabled = true;
+    document.getElementById('ai-status').textContent = '';
+    document.getElementById('calc-status').textContent = '';
+    document.getElementById('mileage-result').classList.remove('visible');
+    document.getElementById('live-ppm').textContent = '';
+    document.getElementById('photo-input').value = '';
+
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab.' + tab).classList.add('active');
+
+    const lbl = HOMES[tab].label;
+    document.getElementById('form-title').textContent = 'Log a Load — ' + lbl;
+    document.getElementById('submit-btn').className = 'submit-btn ' + tab;
+    document.getElementById('stats-label').textContent = lbl + ' — 14-Day Stats';
+    document.getElementById('home-label-1').textContent = lbl;
+    document.getElementById('home-label-2').textContent = lbl;
+
+    ['home-dot-1','home-dot-2'].forEach(id => {
+      document.getElementById(id).className = 'stop-dot home-' + tab;
+    });
+    document.getElementById('mi-total-box').className = 'mile-box total' + (tab === 'jerome' ? ' jerome-tab' : '');
+    renderList(); updateStats();
+  }
+
+  // ── Photo ────────────────────────────────────────────────
+  function handlePhoto(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      photoBase64 = ev.target.result.split(',')[1];
+      const img = document.getElementById('preview-img');
+      img.src = ev.target.result; img.style.display = 'block';
+      document.getElementById('upload-placeholder').style.display = 'none';
+      document.getElementById('upload-zone').classList.add('has-image');
+      document.getElementById('extract-btn').disabled = false;
+      document.getElementById('ai-status').textContent = 'Photo ready — tap Extract to auto-fill.';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function extractFromPhoto() {
+    if (!photoBase64) return;
+    const btn = document.getElementById('extract-btn');
+    const status = document.getElementById('ai-status');
+    btn.disabled = true; btn.textContent = '⏳ Reading load...';
+    status.textContent = 'Sending to AI...';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photoBase64 } },
+              { type: 'text', text: `This is a Landstar load board screenshot. Extract and return ONLY a JSON object — no markdown, no backticks, no extra text:
+{"loadOrigin":"City, ST","loadDest":"City, ST","description":"commodity or trailer type and length if visible","notes":"rate, weight, pickup date, any special requirements"}
+Use null for any field you cannot read.` }
+            ]
+          }]
+        })
+      });
+      const json = await res.json();
+      const raw = json.content?.find(b => b.type === 'text')?.text || '{}';
+      const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+      if (parsed.loadOrigin)  document.getElementById('load-origin').value = parsed.loadOrigin;
+      if (parsed.loadDest)    document.getElementById('load-dest').value   = parsed.loadDest;
+      if (parsed.description) document.getElementById('load-desc').value   = parsed.description;
+      if (parsed.notes)       document.getElementById('load-notes').value  = parsed.notes;
+      clearMiles();
+      status.textContent = '✅ Done! Verify the cities then tap Calculate Miles.';
+    } catch(err) {
+      status.textContent = '⚠️ Could not extract — fill in manually. (' + err.message + ')';
+    }
+    btn.textContent = '✨ Extract Load Details from Photo';
+    btn.disabled = false;
+  }
+
+  // ── Geocoding via Nominatim (free, no key needed) ────────
+  async function geocode(place) {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&countrycodes=us&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en-US' } });
+    const json = await res.json();
+    if (!json.length) throw new Error('Could not find location: ' + place);
+    return { lat: parseFloat(json[0].lat), lon: parseFloat(json[0].lon) };
+  }
+
+  // ── OSRM driving distance (free, no key needed) ──────────
+  async function drivingMiles(from, to) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.code !== 'Ok' || !json.routes?.length) throw new Error('No route found');
+    return json.routes[0].distance * 0.000621371; // meters → miles
+  }
+
+  function clearMiles() {
+    currentMiles = null;
+    document.getElementById('mileage-result').classList.remove('visible');
+    document.getElementById('calc-status').textContent = '';
+    document.getElementById('live-ppm').textContent = '';
+  }
+
+  async function calculateMiles() {
+    const originStr = document.getElementById('load-origin').value.trim();
+    const destStr   = document.getElementById('load-dest').value.trim();
+    if (!originStr || !destStr) { alert('Enter both Load Origin and Destination first.'); return; }
+
+    const btn = document.getElementById('calc-btn');
+    const status = document.getElementById('calc-status');
+    btn.disabled = true; btn.textContent = '⏳ Calculating…';
+    status.textContent = 'Looking up locations…';
+
+    try {
+      const home = HOMES[activeTab];
+
+      status.textContent = 'Geocoding locations…';
+      const [originCoord, destCoord] = await Promise.all([
+        geocode(originStr),
+        geocode(destStr)
+      ]);
+
+      status.textContent = 'Calculating driving distances…';
+      const [deadhead, loaded, returnMi] = await Promise.all([
+        drivingMiles(home, originCoord),
+        drivingMiles(originCoord, destCoord),
+        drivingMiles(destCoord, home)
+      ]);
+
+      const total = deadhead + loaded + returnMi;
+      currentMiles = { deadhead, loaded, returnMi, total };
+
+      document.getElementById('mi-deadhead').textContent = Math.round(deadhead);
+      document.getElementById('mi-loaded').textContent   = Math.round(loaded);
+      document.getElementById('mi-return').textContent   = Math.round(returnMi);
+      document.getElementById('mi-total').textContent    = Math.round(total);
+      document.getElementById('mileage-result').classList.add('visible');
+      status.textContent = '✅ Miles calculated using real driving routes.';
+      updateLivePPM();
+    } catch(err) {
+      status.textContent = '⚠️ ' + err.message + ' — check city names and try again.';
+    }
+
+    btn.disabled = false; btn.textContent = '🗺 Calculate Round-Trip Miles';
+  }
+
+  function updateLivePPM() {
+    const profit = parseFloat(document.getElementById('load-profit').value);
+    const el = document.getElementById('live-ppm');
+    if (profit > 0 && currentMiles) {
+      el.textContent = fmt(profit) + ' ÷ ' + Math.round(currentMiles.total) + ' mi = ' + fmtPPM(profit, currentMiles.total);
+      el.style.color = 'var(--green)';
+    } else if (profit > 0) {
+      el.textContent = 'Calculate miles to see profit per mile';
+      el.style.color = 'var(--muted)';
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  // ── Add load ─────────────────────────────────────────────
+  function addLoad() {
+    const profit = parseFloat(document.getElementById('load-profit').value);
+    const desc   = document.getElementById('load-desc').value.trim();
+    const date   = document.getElementById('load-date').value;
+    const notes  = document.getElementById('load-notes').value.trim();
+    const origin = document.getElementById('load-origin').value.trim();
+    const dest   = document.getElementById('load-dest').value.trim();
+
+    if (!profit || profit <= 0) { alert('Please enter a profit amount.'); return; }
+    if (!date) { alert('Please select a date.'); return; }
+
+    data[activeTab].unshift({
+      id: Date.now(), date, profit, desc, notes, origin, dest,
+      miles: currentMiles ? { ...currentMiles } : null,
+      photo: photoBase64 ? 'data:image/jpeg;base64,' + photoBase64 : null
+    });
+    save();
+
+    ['load-profit','load-desc','load-notes','load-origin','load-dest'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('preview-img').style.display = 'none';
+    document.getElementById('upload-placeholder').style.display = 'block';
+    document.getElementById('upload-zone').classList.remove('has-image');
+    document.getElementById('extract-btn').disabled = true;
+    document.getElementById('ai-status').textContent = '';
+    document.getElementById('photo-input').value = '';
+    document.getElementById('mileage-result').classList.remove('visible');
+    document.getElementById('calc-status').textContent = '';
+    document.getElementById('live-ppm').textContent = '';
+    photoBase64 = null; currentMiles = null;
+
+    renderList(); updateStats(); updateScoreboard();
+  }
+
+  function deleteLoad(tab, id) {
+    data[tab] = data[tab].filter(l => l.id !== id);
+    save(); renderList(); updateStats(); updateScoreboard();
+  }
+
+  // ── Render ────────────────────────────────────────────────
+  function renderList() {
+    const list = data[activeTab];
+    const el = document.getElementById('load-list');
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-state">No loads logged for this origin yet.<br>Upload a photo or fill in the form above.</div>';
+      return;
+    }
+    el.innerHTML = list.map(l => {
+      const routeStr = l.origin && l.dest ? `${l.origin} → ${l.dest}` : '';
+      const miStr = l.miles
+        ? `${Math.round(l.miles.deadhead)} dh + ${Math.round(l.miles.loaded)} loaded + ${Math.round(l.miles.returnMi)} back = ${Math.round(l.miles.total)} mi total`
+        : '';
+      const ppm = l.miles ? fmtPPM(l.profit, l.miles.total) : '';
+      return `<div class="load-item ${activeTab}">
+        <div>
+          <div class="load-date">${new Date(l.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+          ${routeStr ? `<div class="load-desc">${routeStr}</div>` : ''}
+          ${l.desc ? `<div class="load-route">${l.desc}</div>` : ''}
+          ${miStr ? `<div class="load-route">🗺 ${miStr}</div>` : ''}
+          ${l.notes ? `<div class="load-route" style="color:var(--muted)">${l.notes}</div>` : ''}
+          ${l.photo ? `<div style="margin-top:6px;"><img src="${l.photo}" style="max-height:55px;border-radius:4px;cursor:pointer;" onclick="openModalSrc(this.src)"></div>` : ''}
+        </div>
+        <div>
+          <div class="load-profit">${fmt(l.profit)}</div>
+          ${ppm ? `<div class="load-ppm">${ppm}</div>` : ''}
+          <button class="load-del" onclick="deleteLoad('${activeTab}',${l.id})">✕ remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    const list = data[activeTab];
+    const total = list.reduce((s,l)=>s+l.profit,0);
+    const avg = list.length ? total/list.length : 0;
+    const miLoads = list.filter(l=>l.miles);
+    const avgPPM = miLoads.length ? miLoads.reduce((s,l)=>s+(l.profit/l.miles.total),0)/miLoads.length : null;
+    document.getElementById('stat-total').textContent = fmt(total);
+    document.getElementById('stat-loads').textContent = list.length;
+    document.getElementById('stat-avg').textContent = fmt(avg);
+    document.getElementById('stat-ppm').textContent = avgPPM ? '$'+avgPPM.toFixed(2) : '—';
+  }
+
+  function updateScoreboard() {
+    ['muir','jerome'].forEach(tab => {
+      const list = data[tab];
+      const total = list.reduce((s,l)=>s+l.profit,0);
+      const avg = list.length ? total/list.length : 0;
+      const miLoads = list.filter(l=>l.miles);
+      const avgPPM = miLoads.length ? miLoads.reduce((s,l)=>s+(l.profit/l.miles.total),0)/miLoads.length : null;
+      document.getElementById(tab+'-total').textContent = fmt(total);
+      document.getElementById(tab+'-loads').textContent = list.length;
+      document.getElementById(tab+'-avg').textContent = fmt(avg);
+      document.getElementById(tab+'-ppm').textContent = avgPPM ? '$'+avgPPM.toFixed(2)+'/mi avg' : '—';
+    });
+
+    const mT = data.muir.reduce((s,l)=>s+l.profit,0);
+    const jT = data.jerome.reduce((s,l)=>s+l.profit,0);
+    const combined = mT + jT;
+    const fill = document.getElementById('winner-fill');
+    const label = document.getElementById('winner-label');
+    if (combined === 0) {
+      fill.style.width = '50%'; fill.style.background = 'var(--muir)';
+      label.textContent = 'Log loads to see the leader';
+    } else {
+      const mPct = (mT/combined)*100;
+      if (mT >= jT) {
+        fill.style.width = mPct+'%'; fill.style.background = 'var(--muir)';
+        label.textContent = mT > jT ? `Muir leading by ${fmt(mT-jT)}` : 'Dead even!';
+      } else {
+        fill.style.width = (100-mPct)+'%'; fill.style.background = 'var(--jerome)';
+        label.textContent = `Jeromesville leading by ${fmt(jT-mT)}`;
+      }
+    }
+    updateStats();
+  }
+
+  function openModal(e) { e.stopPropagation(); document.getElementById('modal-img').src = document.getElementById('preview-img').src; document.getElementById('modal').classList.remove('hidden'); }
+  function openModalSrc(src) { document.getElementById('modal-img').src = src; document.getElementById('modal').classList.remove('hidden'); }
+  function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+  init();
+</script>
+
+</body>
+</html>
